@@ -1,20 +1,48 @@
 const http = require("http");
+const fs = require("fs");
 
 const server = http.createServer((req, res) => {
   const url = req.url;
-  if (url === "/home") {
-    res.write("<h1>Welcome to home page</h1>");
-    res.end();
-  } else if (url === "/about") {
-    res.write("<h1>Welcome to about pahe</h1>");
-    res.end();
-  } else if (url === "/node") {
-    res.write("<h1>Welcome to node page</h1>");
-    res.end();
-  } else {
-    res.write("<h1>Welcome to my page</h1>");
-    res.end();
+  const method = req.method;
+  if (url === "/") {
+    let message = "No message yet!";
+    try {
+      message = fs.readFileSync("message.txt", "utf8");
+    } catch (error) {
+      // Ignore error if file doesn't exist
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+    res.write("<html>");
+    res.write("<head><title>Enter Message</title><head>");
+    res.write(
+      `<body><p>${message}</p><form action="/message" method="POST"><input type="text" name="message"><button type="submit">Send</button></form></body>`
+    );
+    res.write("</html>");
+    return res.end();
   }
+  if (url === "/message" && method === "POST") {
+    const body = [];
+    req.on("data", (chunk) => {
+      console.log(chunk);
+      body.push(chunk);
+    });
+    req.on("end", () => {
+      const parsebody = Buffer.concat(body).toString();
+      const message = parsebody.split("=")[1];
+      fs.writeFileSync("message.txt", message);
+    });
+    res.statusCode = 302;
+    res.setHeader("Location", "/");
+    return res.end();
+  }
+  res.setHeader("Content-Type", "text/html");
+  res.write("<html>");
+  res.write("<head><title>My First Page</title><head>");
+  res.write("<body><h1>Hello from my Node.js Server!</h1></body>");
+  res.write("</html>");
+  res.end();
 });
 
 server.listen(4000);
